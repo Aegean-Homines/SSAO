@@ -18,14 +18,12 @@ uniform mat4 ProjectionMatrix;
 uniform mat4 NormalMatrix;
 
 //out
-out vec3 normalVec;
-out vec2 texCoord;
 out vec3 viewPosition;
 
 void main()
 {
-	viewPosition = (ViewMatrix * ModelMatrix * vertex).xyz;
-	normalVec = normalize(mat3(NormalMatrix * ViewMatrix)*vertexNormal);
-	texCoord = vertexTexture;
-	gl_Position = ProjectionMatrix * ViewMatrix * ModelMatrix * vertex;
+	mat4 MVMatrix = ViewMatrix * ModelMatrix;
+	mat4 MVPMatrix = ProjectionMatrix * MVMatrix;
+	viewPosition = (MVMatrix * vertex).xyz;
+	gl_Position = MVPMatrix * vertex;
 }

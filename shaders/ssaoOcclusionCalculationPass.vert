@@ -8,6 +8,7 @@ layout (location = 3) in vec3 vertTexCoord;
 out vec2 texCoord;
 
 void main(){
-	texCoord = vec2(vertTexCoord.x, vertTexCoord.y);
+	//texCoord = (vertPosition.xy + vec2(1.0)) / 2.0;
+	texCoord = vertTexCoord.xy;
 	gl_Position = vertPosition;
 }

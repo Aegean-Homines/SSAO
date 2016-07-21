@@ -61,7 +61,6 @@ const std::string debuggingShaderName = "debugWindow";
 // often as after each OpenGL call.  At the very least, once per
 // refresh will tell you if something is going wrong.
 #define CHECKERROR {int err = glGetError(); if (err) { fprintf(stderr, "OpenGL error in scene.cpp at line %d: %s\n", __LINE__, gluErrorString(err)); getchar(); exit(-1);} }
-#define MAX_SAMPLE_VALUES_SSAO 64
 #define NOISE_SIZE 4
 
 #define Sqrt2Pi 2.5066282746310005024157652848110452530069867406099383
@@ -109,7 +108,7 @@ void Scene::InitializeLights(int nLights, bool randomized /*= false*/, bool allW
 	srand(time(NULL));
 	// Light colors and position parameters
 	ambientColor = vec3(0.2f);
-	lightColor = vec3(0.2f, 1.0f, 1.0f);
+	lightColor = vec3(1.0f, 1.0f, 1.0f);
 
 	for (int i = 0; i < nLights; ++i) {
 		localLights.push_back(LocalLight(randomized, false, allWhite));
@@ -143,6 +142,10 @@ void Scene::InitializeScene()
 
     //////////////////////////////////////////////////////////////////////
     // Initialize various scene parameters.
+
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glViewport(0, 0, width, height);
+	glEnable(GL_DEPTH_TEST);
 
     // Scene creation parameters
     mode = 0;
@@ -284,8 +287,8 @@ void Scene::InitializeScene()
 	CreateProgram(ssaoOcclusionBlurPass, ssaoOcclusionBlurPassName);
 
 	// Lighting
-	CreateProgram(lightingShaderSSAO, lightingPassSSAO);
-	/*lightingShaderSSAO.CreateProgram();
+	//CreateProgram(lightingShaderSSAO, lightingPassSSAO);
+	lightingShaderSSAO.CreateProgram();
 
 	vertexShader = shaderFolderPath + lightingPassSSAO + vertexShaderExtension;
 	fragmentShader = shaderFolderPath + lightingPassSSAO + fragmentShaderExtension;
@@ -298,7 +301,7 @@ void Scene::InitializeScene()
 	glBindAttribLocation(lightingShaderSSAO.program, 2, "vertexTexture");
 	glBindAttribLocation(lightingShaderSSAO.program, 3, "vertexTangent");
 
-	lightingShaderSSAO.LinkProgram();*/
+	lightingShaderSSAO.LinkProgram();
 
 	CHECKERROR
 
@@ -385,9 +388,9 @@ void Scene::InitializeScene()
 	groundWoodenNormal.Read("images/toy_box_normal.png");
 	groundWoodenDepthMap.Read("images/toy_box_disp.png");
 
-	/*groundTexture.Read("images/6670-diffuse.jpg");
-	groundNormal.Read("images/6670-normal.jpg");*/
-	CHECKERROR;
+	// Classic ground texture
+	groundClassic.Read("images/6670-diffuse.jpg");
+	CHECKERROR
 }
 
 
@@ -487,9 +490,9 @@ void Scene::ForwardShading()
 	}
 	else {
 		SSAOGeometryPass();
-		//SSAOOcclusionCalculatePass();
-		/*SSAOOcclusionBlurPass();
-		DrawLightingSSAO();*/
+		SSAOOcclusionCalculatePass();
+		//SSAOOcclusionBlurPass();
+		DrawLightingSSAO();
 	}
 
 }
@@ -571,25 +574,17 @@ void Scene::BuildKernelWeightsWithNormalDistribution()
 
 void Scene::BuildSSAOSampleKernel()
 {
-	GLfloat x, y, z;
-	GLfloat scale;
-	for (GLuint i = 0; i < MAX_SAMPLE_VALUES_SSAO; ++i) {
-		// Get three random values
-		// x = [-1, 1], y = [-1, 1], z = [0, 1]
-		// Why those values = for unit circle
-		// Why z is not those values = we want a hemisphere, z =[-1, 1] makes it a sphere
-		x = randomNumbers(randomNumberGenerator) * 2.0f - 1.0f;
-		y = randomNumbers(randomNumberGenerator) * 2.0f - 1.0f;
-		z = randomNumbers(randomNumberGenerator);
-		vec3 kernelValue(x, y, z);
-		kernelValue = normalize(kernelValue);
-		kernelValue *= randomNumbers(randomNumberGenerator);
-		//Scaling
-		scale = GLfloat(i) / GLfloat(MAX_SAMPLE_VALUES_SSAO); // ->If we leave it like this, they are evenly distributed
-		// We are also doing the one below because we want them to be more dense near the center of the hemisphere
-		scale = lerp(0.1f, 1.0f, scale * scale); // 0.1f + scale * (0.9) => this is how it gets closer
-		kernelValue *= scale;
-		ssaoKernel.push_back(kernelValue);
+	for (unsigned int i = 0; i < MAX_SAMPLE_VALUES_SSAO; ++i) {
+		float scale = static_cast<float>(i) / static_cast<float>(MAX_SAMPLE_VALUES_SSAO);
+		vec3 v;
+		v.x = 2.0f * (float)rand() / RAND_MAX - 1.0f;
+		v.y = 2.0f * (float)rand() / RAND_MAX - 1.0f;
+		v.z = 2.0f * (float)rand() / RAND_MAX - 1.0f;
+
+		// closer to the origin
+		v *= (0.1f + 0.9f * scale * scale);
+
+		ssaoKernel[i] = v;
 	}
 }
 
@@ -704,38 +699,45 @@ void Scene::DrawGround(unsigned int program)
 
 	//glEnable(GL_CULL_FACE);
 
-	if (brick) {
-		groundTexture.Bind(0);      // Choose texture unit 1
-		loc = glGetUniformLocation(program, "groundTexture");
-		glUniform1i(loc, 0);        // Tell the shader about unit 1
+	if (isParallaxMappingProject) {
+		if (brick) {
+			groundTexture.Bind(0);      // Choose texture unit 1
+			loc = glGetUniformLocation(program, "groundTexture");
+			glUniform1i(loc, 0);        // Tell the shader about unit 1
 
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, groundNormal.textureId);
-		loc = glGetUniformLocation(program, "groundNormal");
-		glUniform1i(loc, 1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, groundNormal.textureId);
+			loc = glGetUniformLocation(program, "groundNormal");
+			glUniform1i(loc, 1);
 
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, groundDepthMap.textureId);
-		loc = glGetUniformLocation(program, "depthMap");
-		glUniform1i(loc, 2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, groundDepthMap.textureId);
+			loc = glGetUniformLocation(program, "depthMap");
+			glUniform1i(loc, 2);
+		}
+		else {
+			groundWooden.Bind(0);      // Choose texture unit 1
+			loc = glGetUniformLocation(program, "groundTexture");
+			glUniform1i(loc, 0);        // Tell the shader about unit 1
+
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, groundWoodenNormal.textureId);
+			loc = glGetUniformLocation(program, "groundNormal");
+			glUniform1i(loc, 1);
+
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, groundWoodenDepthMap.textureId);
+			loc = glGetUniformLocation(program, "depthMap");
+			glUniform1i(loc, 2);
+		}
 	}
 	else {
-		groundWooden.Bind(0);      // Choose texture unit 1
+		groundClassic.Bind(0);
 		loc = glGetUniformLocation(program, "groundTexture");
 		glUniform1i(loc, 0);        // Tell the shader about unit 1
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, groundWoodenNormal.textureId);
-		loc = glGetUniformLocation(program, "groundNormal");
-		glUniform1i(loc, 1);
-
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, groundWoodenDepthMap.textureId);
-		loc = glGetUniformLocation(program, "depthMap");
-		glUniform1i(loc, 2);
 	}
-	
 
+	
     loc = glGetUniformLocation(program, "ModelMatrix");
     glUniformMatrix4fv(loc, 1, GL_TRUE, Identity.Pntr());
     loc = glGetUniformLocation(program, "NormalMatrix");
@@ -746,12 +748,29 @@ void Scene::DrawGround(unsigned int program)
 
     groundPolygons->DrawVAO();
 
-	glActiveTexture(GL_TEXTURE0);
-	groundTexture.Unbind();
-	glActiveTexture(GL_TEXTURE1);
-	groundNormal.Unbind();
-	glActiveTexture(GL_TEXTURE2);
-	groundDepthMap.Unbind();
+	if (isParallaxMappingProject) {
+		if (brick) {
+			glActiveTexture(GL_TEXTURE0);
+			groundTexture.Unbind();
+			glActiveTexture(GL_TEXTURE1);
+			groundNormal.Unbind();
+			glActiveTexture(GL_TEXTURE2);
+			groundDepthMap.Unbind();
+
+		}
+		else {
+			glActiveTexture(GL_TEXTURE0);
+			groundWooden.Unbind();
+			glActiveTexture(GL_TEXTURE1);
+			groundWoodenNormal.Unbind();
+			glActiveTexture(GL_TEXTURE2);
+			groundWoodenDepthMap.Unbind();
+		}
+	}
+	else {
+		glActiveTexture(GL_TEXTURE0);
+		groundClassic.Unbind();
+	}
 
 }
 
@@ -819,10 +838,11 @@ void Scene::DeferredShadingGeometryPass()
 	// Done with shader program
 	deferredShaderGBufferPass.Unuse();
 
-	/*debugging.Use();
+	debugging.Use();
 	program = debugging.program;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	MAT4 DebugMatrix = Translate(0.65f, 0.67f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
+	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+	MAT4 DebugMatrix = Translate(0.65f, 0.65f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
 	int location = glGetUniformLocation(program, "DebugMatrix");
 	glUniformMatrix4fv(location, 1, GL_TRUE, DebugMatrix.Pntr());
 
@@ -833,7 +853,7 @@ void Scene::DeferredShadingGeometryPass()
 
 	fullScreenQuad.Draw();
 
-	debugging.Unuse();*/
+	debugging.Unuse();
 }
 
 void Scene::DeferredShadingLightingPass()
@@ -1210,9 +1230,6 @@ void Scene::SSAOGeometryPass()
 	gBufferPassForSSAO.Use();
 
 	gBufferForSSAO.Bind();
-	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
-	glViewport(0, 0, width, height);
-	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	int program = gBufferPassForSSAO.program; 
@@ -1223,26 +1240,17 @@ void Scene::SSAOGeometryPass()
 	loc = glGetUniformLocation(program, "ProjectionMatrix");
 	glUniformMatrix4fv(loc, 1, GL_TRUE, WorldProj.Pntr());
 
-	/*loc = glGetUniformLocation(program, "back");
-	glUniform1f(loc, back);
-
-	loc = glGetUniformLocation(program, "front");
-	glUniform1f(loc, front);*/
-
-	if (drawSpheres) DrawSpheres(program);
-	DrawSun(program);
-	if (drawGround) DrawGround(program);
 	DrawModel(program, centralPolygons);
+	if(drawGround) DrawGround(program);
 	CHECKERROR;
 
 	gBufferForSSAO.Unbind();
 	// Done with shader program
 	gBufferPassForSSAO.Unuse();
 
-	debugging.Use();
+	/*debugging.Use();
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 
 	program = debugging.program;
 
@@ -1257,52 +1265,28 @@ void Scene::SSAOGeometryPass()
 
 	fullScreenQuad.Draw();
 
-	debugging.Unuse();
+	debugging.Unuse();*/
 }
 
 void Scene::SSAOOcclusionCalculatePass()
 {
-	ssaoFBO.Bind();
-	glViewport(0, 0, width, height);
-	glClear(GL_COLOR_BUFFER_BIT);
 	ssaoOcclusionCalculatePass.Use();
+	ssaoFBO.Bind();
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	int program = ssaoOcclusionCalculatePass.program;
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gPositionDepth);
 	int loc = glGetUniformLocation(program, "gPositionDepth");
-	glUniform1i(loc, 0);
-
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gNormal);
-	loc = glGetUniformLocation(program, "gNormal");
 	glUniform1i(loc, 1);
 
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, ssaoNoiseTexture.textureId);
-	loc = glGetUniformLocation(program, "ssaoNoise");
-	glUniform1i(loc, 2);
-
-	loc = glGetUniformLocation(program, "gBufDebug");
-	glUniform1i(loc, gBufDebug);
-
-	// SEND ACTUAL NOISE DATA
-	for (GLuint i = 0; i < MAX_SAMPLE_VALUES_SSAO; ++i) {
-		loc = glGetUniformLocation(program, ("SampleArray[" + std::to_string(i) + "]").c_str());
-		glUniform3fv(loc, 1, &ssaoKernel[i][0]);
-	}
+	// sending kernel data
+	loc = glGetUniformLocation(program, "SampleArray");
+	glUniform3fv(loc, MAX_SAMPLE_VALUES_SSAO, (const GLfloat*)&ssaoKernel[0]);
 
 	loc = glGetUniformLocation(program, "ProjectionMatrix");
 	glUniformMatrix4fv(loc, 1, GL_TRUE, WorldProj.Pntr());
-
-	// Send the screen height and width to the shader
-	loc = glGetUniformLocation(program, "Width");
-	glUniform1f(loc, GLfloat(width));
-	loc = glGetUniformLocation(program, "Height");
-	glUniform1f(loc, GLfloat(height));
-
-	loc = glGetUniformLocation(program, "NoiseSize");
-	glUniform1f(loc, GLfloat(NOISE_SIZE));
 
 	loc = glGetUniformLocation(program, "KernelSize");
 	glUniform1i(loc, MAX_SAMPLE_VALUES_SSAO);
@@ -1314,15 +1298,11 @@ void Scene::SSAOOcclusionCalculatePass()
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, 0);
 
 	ssaoFBO.Unbind();
 	ssaoOcclusionCalculatePass.Unuse();
 
-	debugging.Use();
+	/*debugging.Use();
 	program = debugging.program;
 	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1338,22 +1318,19 @@ void Scene::SSAOOcclusionCalculatePass()
 
 	fullScreenQuad.Draw();
 
-	debugging.Unuse();
+	debugging.Unuse();*/
 }
 
 void Scene::SSAOOcclusionBlurPass()
 {
+	ssaoOcclusionBlurPass.Use();
 	ssaoBlurFBO.Bind();
 
 	glClear(GL_COLOR_BUFFER_BIT);
-	ssaoOcclusionBlurPass.Use();
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, ssaoFBO.texture);
 	int loc = glGetUniformLocation(ssaoOcclusionBlurPass.program, "ssaoTexture");
 	glUniform1i(loc, 0);
-
-	loc = glGetUniformLocation(ssaoOcclusionBlurPass.program, "noiseTextureSize");
-	glUniform1i(loc, NOISE_SIZE);
 
 	fullScreenQuad.Draw();
 
@@ -1379,50 +1356,28 @@ void Scene::SSAOOcclusionBlurPass()
 
 void Scene::DrawLightingSSAO()
 {
+	lightingShaderSSAO.Use();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// Use lighting pass shader
-	lightingShaderSSAO.Use();
+
 	int program = lightingShaderSSAO.program;
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gPositionDepth);
-	int loc = glGetUniformLocation(program, "gPositionDepth");
-	glUniform1i(loc, 0);
-
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gNormal);
-	loc = glGetUniformLocation(program, "gNormal");
+	glBindTexture(GL_TEXTURE_2D, ssaoFBO.texture);
+	int loc = glGetUniformLocation(program, "ssaoFBO");
 	glUniform1i(loc, 1);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gDifSpec);
-	loc = glGetUniformLocation(program, "gDifSpec");
+	glBindTexture(GL_TEXTURE_2D, ssaoBlurFBO.texture);
+	loc = glGetUniformLocation(program, "ssaoFBOBlurred");
 	glUniform1i(loc, 2);
 
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gSpecular);
-	loc = glGetUniformLocation(program, "gSpecular");
+	glBindTexture(GL_TEXTURE_2D, gBufferForSSAO.gPositionDepth);
+	loc = glGetUniformLocation(program, "gPosition");
 	glUniform1i(loc, 3);
 
-	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, ssaoFBO.texture);
-	loc = glGetUniformLocation(program, "ssaoFBO");
-	glUniform1i(loc, 4);
-
-	glActiveTexture(GL_TEXTURE5);
-	glBindTexture(GL_TEXTURE_2D, ssaoBlurFBO.texture);
-	loc = glGetUniformLocation(program, "ssaoFBOBlurred");
-	glUniform1i(loc, 5);
-
-	loc = glGetUniformLocation(program, "LightPosition");
-	glUniform3fv(loc, 1, &lightPosition[0]);
-
-	loc = glGetUniformLocation(program, "Linear");
-	glUniform1f(loc, 0.09f);
-
-	loc = glGetUniformLocation(program, "Quadratic");
-	glUniform1f(loc, 0.032f);
-
+	// Send the perspective and viewing matrices to the shader
 	loc = glGetUniformLocation(program, "ProjectionMatrix");
 	glUniformMatrix4fv(loc, 1, GL_TRUE, WorldProj.Pntr());
 	loc = glGetUniformLocation(program, "ViewMatrix");
@@ -1430,17 +1385,24 @@ void Scene::DrawLightingSSAO()
 	loc = glGetUniformLocation(program, "ViewInverse");
 	glUniformMatrix4fv(loc, 1, GL_TRUE, WorldView.inverse().Pntr());
 
-	loc = glGetUniformLocation(program, "AmbientLight");
+	//Light position (L)
+	loc = glGetUniformLocation(program, "lightPos");
+	glUniform3fv(loc, 1, &lightPosition[0]);
+
+	loc = glGetUniformLocation(program, "Ambient");
 	glUniform3fv(loc, 1, &ambientColor[0]);
 
+	float widthFloat, heightFloat;
+	widthFloat = static_cast<float>(width);
+	heightFloat = static_cast<float>(height);
 	loc = glGetUniformLocation(program, "Width");
-	glUniform1i(loc, width);
+	glUniform1f(loc, widthFloat);
 
 	loc = glGetUniformLocation(program, "Height");
-	glUniform1i(loc, height);
+	glUniform1f(loc, heightFloat);
 
 	//Ii
-	loc = glGetUniformLocation(program, "LightColor");
+	loc = glGetUniformLocation(program, "Light");
 	glUniform3fv(loc, 1, &(lightColor[0]));
 
 	loc = glGetUniformLocation(program, "IsAOEnabled");
@@ -1449,54 +1411,31 @@ void Scene::DrawLightingSSAO()
 	loc = glGetUniformLocation(program, "IsBlurred");
 	glUniform1i(loc, isSSAOBlurred);
 
-	fullScreenQuad.Draw();
+	if (drawSpheres) DrawSpheres(program);
+	DrawSun(program);
+	if (drawGround) DrawGround(program);
+	DrawModel(program, centralPolygons);
+	CHECKERROR;
 
-	CHECKERROR
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	lightingShaderSSAO.Unuse();
 
-	if (drawDebugQuads) {
-		debugging.Use();
-		program = debugging.program;
-		glViewport(0, 0, width, height);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	debugging.Use();
+	program = debugging.program;
+	MAT4 DebugMatrix = Translate(0.65f, 0.65f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
+	int location = glGetUniformLocation(program, "DebugMatrix");
+	glUniformMatrix4fv(location, 1, GL_TRUE, DebugMatrix.Pntr());
 
-		MAT4 DebugMatrix = Translate(0.65f, 0.67f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
-		int location = glGetUniformLocation(program, "DebugMatrix");
-		glUniformMatrix4fv(location, 1, GL_TRUE, DebugMatrix.Pntr());
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, ssaoFBO.texture);
+	loc = glGetUniformLocation(program, "fboToDebug");
+	glUniform1i(loc, 1);
 
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, ssaoFBO.texture);
-		loc = glGetUniformLocation(program, "fboToDebug");
-		glUniform1i(loc, 1);
+	fullScreenQuad.Draw();
 
-		fullScreenQuad.Draw();
-
-
-		DebugMatrix = Translate(0.65f, -0.67f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
-		location = glGetUniformLocation(program, "DebugMatrix");
-		glUniformMatrix4fv(location, 1, GL_TRUE, DebugMatrix.Pntr());
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, ssaoBlurFBO.texture);
-		loc = glGetUniformLocation(program, "fboToDebug");
-		glUniform1i(loc, 1);
-
-		fullScreenQuad.Draw();
-
-		DebugMatrix = Translate(-0.65f, -0.67f, 0.5f) * Scale(0.3f, 0.3f, 0.3f);
-		location = glGetUniformLocation(program, "DebugMatrix");
-		glUniformMatrix4fv(location, 1, GL_TRUE, DebugMatrix.Pntr());
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, ssaoNoiseTexture.textureId);
-		loc = glGetUniformLocation(program, "fboToDebug");
-		glUniform1i(loc, 1);
-
-		fullScreenQuad.Draw();
-
-		debugging.Unuse();
-	}
+	debugging.Unuse();
 	
 }
 

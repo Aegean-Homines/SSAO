@@ -507,8 +507,9 @@ Ply::Ply(const char* name, const bool reverse)
 
 	type = PLY;
 
+	std::string fullPath = "models//" + std::string(name);
     // Open PLY file and read header;  Exit on any failure.
-    p_ply ply = ply_open(name, NULL, 0, NULL);
+    p_ply ply = ply_open(fullPath.c_str(), NULL, 0, NULL);
     if (!ply) { throw std::exception(); }
     if (!ply_read_header(ply)) { throw std::exception(); }
 

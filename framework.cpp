@@ -455,9 +455,6 @@ int main(int argc, char** argv)
     printf("Rendered by: %s\n", glGetString(GL_RENDERER));
     fflush(stdout);
 
-	/*scene.width = glutGet(GLUT_WINDOW_WIDTH);
-	scene.height = glutGet(GLUT_WINDOW_HEIGHT);*/
-
     // Hookup GLUT callback for all events we're interested in
     glutIgnoreKeyRepeat(true);
     glutDisplayFunc(&ReDraw);
@@ -476,7 +473,8 @@ int main(int argc, char** argv)
     TwDefine(" Tweaks size='300 400' ");
     TwAddButton(bar, "quit", (TwButtonCallback)Quit, NULL, " label='Quit' key=q ");
 	
-	TwAddButton(bar, "Render Mode", (TwButtonCallback)ChangeRenderMode, NULL, " label='Toggle Render Mode' ");
+	//TwAddButton(bar, "Render Mode", (TwButtonCallback)ChangeRenderMode, NULL, " label='Toggle Render Mode' ");
+	TwAddVarRW(bar, "ToggleRenderMode", TW_TYPE_BOOLCPP, &scene.isForward, " label='Toggle Render Mode' true='Forward' false='Deferred' ");
 
 	TwAddSeparator(bar, NULL, NULL);
 
@@ -562,7 +560,7 @@ int main(int argc, char** argv)
 	// SSAO
 	TwAddVarRW(bar, "SSAOToggle", TW_TYPE_BOOLCPP, &scene.isSSAOEnabled, " label='Toggle SSAO' group='SSAO' true='Enabled' false='Disabled' ");
 	TwAddVarRW(bar, "SSAOBlurToggle", TW_TYPE_BOOLCPP, &scene.isSSAOBlurred, " label='Blur SSAO' group='SSAO' true='Blurred' false='Non-Blurred' ");
-	TwAddVarRW(bar, "SSAORADIUS", TW_TYPE_FLOAT, &scene.ssaoRadius, " label='SSAO Radius' group='SSAO'  ");
+	TwAddVarRW(bar, "SSAORADIUS", TW_TYPE_FLOAT, &scene.ssaoRadius, " label='SSAO Radius' group='SSAO' step=0.05  ");
 	TwAddSeparator(bar, NULL, NULL);
 	TwAddVarRW(bar, "DebugQuadToggle", TW_TYPE_BOOLCPP, &scene.drawDebugQuads, " label='Draw Debug Quads?' ");
 

@@ -5,40 +5,12 @@
 ////////////////////////////////////////////////////////////////////////
 #version 330
 
-layout (location = 0) out vec4 gPositionDepth;
-layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gDifSpec;
-layout (location = 3) out vec3 gSpecular;
+layout (location = 0) out vec3 gPositionDepth;
 
 //in
-in vec2 texCoord;
-in vec3 normalVec;
 in vec3 viewPosition;
-
-uniform int isTextured;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
-uniform sampler2D groundTexture;
-
-float LinearDepthValue(float originalDepthValue);
 
 void main()
 {	
 	gPositionDepth = viewPosition;
-	gNormal = normalize(normalVec);
-	gDifSpec.a = shininess;
-
-	if (isTextured == 1)
-		gDifSpec.rgb = diffuse * texture(groundTexture, texCoord.st).rgb;
-	else
-		gDifSpec.rgb = diffuse;
-
-	gSpecular = specular;
 }
-
-/*float LinearDepthValue(float originalDepthValue){
-	float zVal = originalDepthValue * 2.0 - 1.0; //The same thing we did with the normal maps' normal value
-	float linearizeDepth = (2.0 * front * back) / (back + front - zVal * (back - front)); //actual linearization
-	return linearizeDepth;
-}*/

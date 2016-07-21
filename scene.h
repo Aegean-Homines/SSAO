@@ -27,6 +27,7 @@ using namespace glm;
 #include <random>
 
 #define MAX_BLUR_WIDTH 100
+#define MAX_SAMPLE_VALUES_SSAO 128
 
 enum GBufferDebugMode {
 	G_POS,
@@ -96,7 +97,7 @@ public:
 	// SSAO data
 	std::uniform_real_distribution<GLfloat> randomNumbers; // random number distribution w.r.t uniform distribution
 	std::default_random_engine randomNumberGenerator;
-	std::vector<vec3> ssaoKernel;
+	vec3 ssaoKernel[MAX_SAMPLE_VALUES_SSAO];
 	std::vector<vec3> ssaoNoise;
 	Texture ssaoNoiseTexture;
 	float ssaoRadius;
@@ -184,6 +185,8 @@ public:
 	Texture groundWooden;
 	Texture groundWoodenNormal;
 	Texture groundWoodenDepthMap;
+
+	Texture groundClassic;
 
 	Texture tempImage;
 	Texture blurImage;
