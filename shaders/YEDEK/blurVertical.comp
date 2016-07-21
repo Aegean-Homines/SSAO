@@ -1,0 +1,43 @@
+/////////////////////////////////////////////////////////////////////////
+// Pixel shader for the final pass
+//
+// Copyright 2013 DigiPen Institute of Technology
+////////////////////////////////////////////////////////////////////////
+#version 430
+
+layout (local_size_x = 1, local_size_y = 128, local_size_z = 1) in; // Declares thread group size
+
+#define MAX_BLUR_WIDTH 100
+
+uniform int BlurHalfWidth;
+uniform int BlurWidth;
+
+uniform Kernel{
+	float weights[(MAX_BLUR_WIDTH+1)];
+} Blur;
+uniform ivec2 Direction;
+layout (r32f, binding = 0) uniform readonly image2D OriginalShadowMap;
+layout (r32f, binding = 1) uniform writeonly image2D BlurredShadowMap;
+
+shared float sharedData[128+(MAX_BLUR_WIDTH+1)];
+
+void main()
+{
+	//ivec2 gpos = ivec2(gl_GlobalInvocationID.x * Direction + gl_GlobalInvocationID.y * (1 - Direction));
+	ivec2 gpos = ivec2(gl_GlobalInvocationID.y);
+	uint texelIndex = gl_LocalInvocationID.y;
+
+	sharedData[texelIndex] = imageLoad(OriginalShadowMap, gpos + (0, -BlurHalfWidth)).r;
+	if(texelIndex < BlurWidth){
+		sharedData[texelIndex + 128] = imageLoad(OriginalShadowMap, gpos + (0, 128-BlurHalfWidth)).r;
+	}
+
+	barrier();
+
+	float sum = 0.0f;
+	for(int i = 0; i <= BlurWidth; ++i){
+		sum += sharedData[texelIndex + i] * Blur.weights[i];
+	}
+
+	imageStore(BlurredShadowMap, gpos, vec4(sum));
+}

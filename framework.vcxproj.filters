@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="fbo.cpp" />
+    <ClCompile Include="framework.cpp" />
+    <ClCompile Include="FSQ.cpp" />
+    <ClCompile Include="LocalLight.cpp" />
+    <ClCompile Include="rply.c" />
+    <ClCompile Include="scene.cpp" />
+    <ClCompile Include="shader.cpp" />
+    <ClCompile Include="models.cpp" />
+    <ClCompile Include="texture.cpp" />
+    <ClCompile Include="transform.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FSQ.h" />
+    <ClInclude Include="LocalLight.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\debugWindow.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\debugWindow.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\deferredAmbient.frag">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredAmbient.vert">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredGBuffer.frag">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredGBuffer.vert">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredGlobalLights.frag">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredGlobalLights.vert">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredLocalLights.frag">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\deferredLocalLights.vert">
+      <Filter>Shaders\deferred</Filter>
+    </None>
+    <None Include="shaders\shadow.frag">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\shadow.vert">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\blur.comp">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\blurVertical.comp">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\lightingSoftShadow.frag">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\lightingSoftShadow.vert">
+      <Filter>Shaders\ESM</Filter>
+    </None>
+    <None Include="shaders\lightingParallaxMapping.frag">
+      <Filter>Shaders\Parallax</Filter>
+    </None>
+    <None Include="shaders\lightingParallaxMapping.vert">
+      <Filter>Shaders\Parallax</Filter>
+    </None>
+    <None Include="shaders\gBufferSSAO.frag">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\gBufferSSAO.vert">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\lightingSSAO.frag">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\lightingSSAO.vert">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\ssaoOcclusionCalculationPass.frag">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\ssaoOcclusionCalculationPass.vert">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\ssaoOcclusionBlurPass.frag">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+    <None Include="shaders\ssaoOcclusionBlurPass.vert">
+      <Filter>Shaders\SSAO</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{a9fa9d62-9a3f-4865-80e9-fcc80dbfd239}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\deferred">
+      <UniqueIdentifier>{26949663-6457-4f9d-8d80-2e578005e5e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\ESM">
+      <UniqueIdentifier>{6ed3338e-bfbf-454b-9a25-d0a981d2513d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Parallax">
+      <UniqueIdentifier>{402228e9-04fd-48d4-960c-860c5fe24d1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\SSAO">
+      <UniqueIdentifier>{49c67011-db09-4153-84c1-35b40fbe92c0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
